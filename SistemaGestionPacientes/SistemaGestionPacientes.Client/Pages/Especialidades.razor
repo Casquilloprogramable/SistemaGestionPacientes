@@ -1,0 +1,167 @@
+
+@page "/especialidades"
+@using SistemaGestionPacientes.Client.Models.Especialidades
+@using SistemaGestionPacientes.Client.Services.Interfaces
+@inject IEspecialidadesApiService Servicio
+
+<PageTitle>Especialidades</PageTitle>
+
+<h3>Gestión de Especialidades</h3>
+
+<div class="card p-3 mb-4">
+    <h5>@(editando ? "Editar especialidad" : "Registrar especialidad")</h5>
+
+    <div class="mb-3">
+        <label class="form-label">Nombre</label>
+        <input class="form-control" @bind="formulario.Nombre" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Descripción</label>
+        <textarea class="form-control"
+                  @bind="formulario.Descripcion"></textarea>
+    </div>
+
+    <button class="btn btn-primary" @onclick="Guardar">
+        @(editando ? "Actualizar" : "Registrar")
+    </button>
+
+    @if (editando)
+    {
+        <button class="btn btn-secondary ms-2" @onclick="Cancelar">
+            Cancelar
+        </button>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info">@mensaje</div>
+}
+
+<h5>Especialidades registradas</h5>
+
+@if (especialidades == null)
+{
+    <p>Cargando especialidades...</p>
+}
+else if (especialidades.Count == 0)
+{
+    <p>No hay especialidades registradas.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var especialidad in especialidades)
+            {
+                <tr>
+                    <td>@especialidad.Id</td>
+                    <td>@especialidad.Nombre</td>
+                    <td>@especialidad.Descripcion</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm"
+                                @onclick="() => Editar(especialidad)">
+                            Editar
+                        </button>
+
+                        <button class="btn btn-danger btn-sm ms-1"
+                                @onclick="() => Eliminar(especialidad.Id)">
+                            Eliminar
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<EspecialidadDTO>? especialidades;
+    private EspecialidadDTO formulario = new();
+    private bool editando = false;
+    private string mensaje = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarEspecialidades();
+    }
+
+    private async Task CargarEspecialidades()
+    {
+        especialidades = await Servicio.ObtenerTodosAsync();
+    }
+
+    private async Task Guardar()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(formulario.Nombre))
+            {
+                mensaje = "El nombre es obligatorio.";
+                return;
+            }
+
+            if (editando)
+            {
+                await Servicio.ActualizarAsync(formulario.Id, formulario);
+                mensaje = "Especialidad actualizada correctamente.";
+            }
+            else
+            {
+                await Servicio.CrearAsync(formulario);
+                mensaje = "Especialidad registrada correctamente.";
+            }
+
+            formulario = new();
+            editando = false;
+            await CargarEspecialidades();
+        }
+        catch (Exception ex)
+        {
+            mensaje = $"Error: {ex.Message}";
+        }
+    }
+
+    private void Editar(EspecialidadDTO especialidad)
+    {
+        formulario = new EspecialidadDTO
+        {
+            Id = especialidad.Id,
+            Nombre = especialidad.Nombre,
+            Descripcion = especialidad.Descripcion
+        };
+
+        editando = true;
+        mensaje = "";
+    }
+
+    private void Cancelar()
+    {
+        formulario = new();
+        editando = false;
+        mensaje = "";
+    }
+
+    private async Task Eliminar(int id)
+    {
+        try
+        {
+            await Servicio.EliminarAsync(id);
+            mensaje = "Especialidad eliminada correctamente.";
+            await CargarEspecialidades();
+        }
+        catch (Exception ex)
+        {
+            mensaje = $"Error: {ex.Message}";
+        }
+    }
+}
